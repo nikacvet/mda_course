@@ -15,3 +15,5 @@ sentence-transformers
 kedro-datasets
 openpyxl
 pyarrow
+gcsfs
+kedro-viz

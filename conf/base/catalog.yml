@@ -6,19 +6,38 @@
 # Input datasets
 
 # Raw datasets
+# project_raw:
+#   type: pandas.ExcelDataset
+#   filepath: data/01_raw/project.xlsx
+#   load_args:
+#     sheet_name: DATA
+
+# organization_raw:
+#   type: pandas.ExcelDataset
+#   filepath: data/01_raw/organization.xlsx
+
+# gdp_csv:
+#   type: pandas.CSVDataset
+#   filepath: data/01_raw/GDP_data.csv
+
 project_raw:
   type: pandas.ExcelDataset
-  filepath: data/01_raw/project.xlsx
-  load_args:
-    sheet_name: DATA
+  filepath: gcs://mda_bucket_25/data/01_raw/project.xlsx
+  credentials: gcs_creds
+
 
 organization_raw:
   type: pandas.ExcelDataset
-  filepath: data/01_raw/organization.xlsx
+  filepath: gcs://mda_bucket_25/data/01_raw/organization.xlsx
+  credentials: gcs_creds
+
 
 gdp_csv:
   type: pandas.CSVDataset
-  filepath: data/01_raw/GDP_data.csv
+  filepath: gcs://mda_bucket_25/data/01_raw/GDP_data.csv
+  credentials: gcs_creds
+
+
 
 # Final initial dataset
 
@@ -52,11 +71,20 @@ country_features_scored:
   filepath: data/03_primary/country_features_scored.parquet
 
 # Output datasets for dashboard
-country_scores_json:
-  type: pandas.JSONDataset
-  filepath: results/country_scores.json
+# country_scores_json:
+#   type: pandas.JSONDataset
+#   filepath: results/country_scores.json
 
+# project_keyphrases:
+#   type: kedro_datasets.json.JSONDataset
+#   filepath: results/project_keyphrases.json
 
 project_keyphrases:
   type: kedro_datasets.json.JSONDataset
-  filepath: results/project_keyphrases.json
+  filepath: gcs://mda_bucket_25/results/project_keyphrases.json
+  credentials: gcs_creds
+
+country_scores_json:
+  type: pandas.JSONDataset
+  filepath: gcs://mda_bucket_25/results/country_scores.json
+  credentials: gcs_creds
