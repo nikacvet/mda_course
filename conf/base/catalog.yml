@@ -1,0 +1,62 @@
+# Here you can define all your datasets by using simple YAML syntax.
+#
+# Documentation for this file format can be found in "The Data Catalog"
+# Link: https://docs.kedro.org/en/stable/data/data_catalog.html
+
+# Input datasets
+
+# Raw datasets
+project_raw:
+  type: pandas.ExcelDataset
+  filepath: data/01_raw/project.xlsx
+  load_args:
+    sheet_name: DATA
+
+organization_raw:
+  type: pandas.ExcelDataset
+  filepath: data/01_raw/organization.xlsx
+
+gdp_csv:
+  type: pandas.CSVDataset
+  filepath: data/01_raw/GDP_data.csv
+
+# Final initial dataset
+
+projects_csv:
+  type: pandas.CSVDataset
+  filepath: data/01_raw/cleaned_dataset.csv
+
+# Intermediate datasets
+projects_preprocessed:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/projects_preprocessed.parquet
+
+gdp_preprocessed:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/gdp_preprocessed.parquet
+
+eu_iso2:
+  type: pickle.PickleDataset
+  filepath: data/02_intermediate/eu_iso2.pkl
+
+project_statuses:
+  type: pickle.PickleDataset
+  filepath: data/02_intermediate/project_statuses.pkl
+
+country_features:
+  type: pandas.ParquetDataset
+  filepath: data/03_primary/country_features.parquet
+
+country_features_scored:
+  type: pandas.ParquetDataset
+  filepath: data/03_primary/country_features_scored.parquet
+
+# Output datasets for dashboard
+country_scores_json:
+  type: pandas.JSONDataset
+  filepath: results/country_scores.json
+
+
+project_keyphrases:
+  type: kedro_datasets.json.JSONDataset
+  filepath: results/project_keyphrases.json

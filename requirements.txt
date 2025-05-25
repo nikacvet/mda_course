@@ -1,0 +1,17 @@
+ipython>=8.10
+jupyterlab>=3.0
+kedro~=0.19.13
+notebook
+pandas
+numpy
+pycountry
+scikit-learn
+plotly
+torch
+pytorch_tabnet
+keybert
+tqdm
+sentence-transformers
+kedro-datasets
+openpyxl
+pyarrow

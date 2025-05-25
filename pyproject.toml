@@ -1,0 +1,55 @@
+[build-system]
+requires = [ "setuptools",]
+build-backend = "setuptools.build_meta"
+
+[project]
+requires-python = "3.9.13"
+name = "mda"
+readme = "README.md"
+dynamic = [ "version",]
+dependencies = [
+    "ipython>=8.10",
+    "jupyterlab>=3.0",
+    "notebook",
+    "kedro~=0.19.13",
+    "pandas",
+    "numpy",
+    "pycountry",
+    "scikit-learn",
+    "plotly",
+    "torch",
+    "pytorch-tabnet",
+    "keybert",
+    "tqdm",
+    "sentence-transformers", 
+    "kedro-datasets",
+    "openpyxl",
+    "pyarrow"
+]
+
+[project.scripts]
+mda = "mda.__main__:main"
+
+[project.optional-dependencies]
+dev = [ "pytest-cov~=3.0", "pytest-mock>=1.7.1, <2.0", "pytest~=7.2", "ruff~=0.1.8",]
+
+[tool.kedro]
+package_name = "mda"
+project_name = "mda"
+kedro_init_version = "0.19.13"
+tools = "['Linting']"
+example_pipeline = "False"
+source_dir = "src"
+
+
+[project.entry-points."kedro.hooks"]
+
+[tool.setuptools.dynamic.version]
+attr = "mda.__version__"
+
+[tool.setuptools.packages.find]
+where = [ "src",]
+namespaces = false
+
+[tool.kedro_telemetry]
+project_id = "0c32298cf87e46c8af3f48ea1aeaebb9"
