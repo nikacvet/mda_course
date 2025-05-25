@@ -187,7 +187,7 @@ conf/**/*credentials*
 data/02_intermediate/**
 data/03_primary/**
 !data/**/
-# except their sub-folders
+
 
 
 # also keep all .gitkeep files
