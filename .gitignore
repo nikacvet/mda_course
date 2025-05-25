@@ -187,6 +187,7 @@ conf/**/*credentials*
 data/02_intermediate/**
 data/03_primary/**
 !data/**/
+data/01_raw/cleaned_dataset.csv
 
 
 

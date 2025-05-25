@@ -2,7 +2,6 @@
 This module contains the data processing pipeline.
 """
 from kedro.pipeline import Pipeline, node
-from kedro.pipeline.modular_pipeline import pipeline
 
 from .nodes import load__preprocess
 
@@ -14,7 +13,7 @@ def create_pipeline(**kwargs) -> Pipeline:
     Returns:
         A pipeline containing data loading and preprocessing nodes.
     """
-    return pipeline(
+    return Pipeline(
         [
             node(
                 func=load__preprocess,
