@@ -19,5 +19,8 @@ jobs:
       - name: Print Python version
         run: python --version
 
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
       - name: Run Kedro pipeline
         run: kedro run
