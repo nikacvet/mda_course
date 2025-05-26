@@ -18,3 +18,6 @@ jobs:
 
       - name: Print Python version
         run: python --version
+
+      - name: Run Kedro pipeline
+        run: kedro run
