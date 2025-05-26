@@ -140,7 +140,7 @@ def compute_weighted_scores_and_tabnet_insights(country_features):
     quantiles = pd.qcut(country_features["Weighted_Score"], q=5, labels=False)
     color_map = px.colors.sequential.Viridis
     country_features["color"] = quantiles.map(lambda q: color_map[q])
-
-    return country_features.sort_values("Score", ascending=False)[["country", "Score", "color"]], importance_json
+    country_features_weighted = country_features
+    return country_features_weighted, country_features.sort_values("Weighted_Score", ascending=False)[["country", "Weighted_Score", "color"]], importance_json
 
 

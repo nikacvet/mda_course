@@ -13,6 +13,6 @@ def create_pipeline(**kwargs):
             func=extract_keyphrases,
             inputs="projects_preprocessed",
             outputs="project_keyphrases",
-            name="extract_keyphrases_node"
+            name="extract_project_keyphrases"
         )
     ])

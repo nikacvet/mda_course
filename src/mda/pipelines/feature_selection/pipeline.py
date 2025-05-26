@@ -7,12 +7,16 @@ def create_pipeline(**kwargs):
             func=country_features,
             inputs=["projects_preprocessed", "gdp_preprocessed", "eu_iso2"],
             outputs="country_features",
-            name="country_features_node"
+            name="dataset_normalization"
         ),
         node(
             func=compute_weighted_scores_and_tabnet_insights,
             inputs="country_features",
-            outputs="country_scores_json",
-            name="export_country_scores_json_node"
+            outputs=[
+                "country_features_weighted",
+                "country_scores_json",
+                "feature_importance"
+            ],
+            name="feature_selection"
         )
     ])

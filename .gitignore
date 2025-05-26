@@ -191,7 +191,7 @@ data/01_raw/cleaned_dataset.csv
 
 *.ipynb
 
-
+results
 # also keep all .gitkeep files
 !.gitkeep
 
