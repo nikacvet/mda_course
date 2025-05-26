@@ -189,6 +189,7 @@ data/03_primary/**
 !data/**/
 data/01_raw/cleaned_dataset.csv
 
+*.ipynb
 
 
 # also keep all .gitkeep files

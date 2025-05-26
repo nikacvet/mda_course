@@ -29,7 +29,7 @@ def to_float_eu(x):
         return np.nan
 
 
-def country_features(projects: pd.DataFrame, gdp: pd.DataFrame, eu_iso2: List[str]) -> pd.DataFrame:
+def country_features(projects, gdp, eu_iso2):
     # Convert monetary columns to float
     money_cols = [
         "ecContribution", "netEcContribution", "organisationTotalCost",
@@ -86,10 +86,8 @@ def country_features(projects: pd.DataFrame, gdp: pd.DataFrame, eu_iso2: List[st
     return country_features
 
 
-def compute_weighted_scores_and_tabnet_insights(country_features: pd.DataFrame) -> pd.DataFrame:
-
-    # Assign weights for weighted score
-    weights = {
+def compute_weighted_scores_and_tabnet_insights(country_features):
+    weights = {    
         "funding_share_scaled": 0.20,
         "ec_per_gdp_scaled": 0.20,
         "project_share_scaled": 0.15,
@@ -110,68 +108,39 @@ def compute_weighted_scores_and_tabnet_insights(country_features: pd.DataFrame) 
     ]
     tabnet_X = country_features[features_list].values.astype("float32")
 
-    # Train TabNet on Weighted Score
-    print("\nTabNet trained on Weighted Score")
     tabnet_y_w = country_features["Weighted_Score"].values.astype("float32").reshape(-1, 1)
     X_train, X_test, y_train, y_test = train_test_split(tabnet_X, tabnet_y_w, test_size=0.2, random_state=42)
     clf_weighted = TabNetRegressor(seed=42, verbose=0)
     clf_weighted.fit(X_train=X_train, y_train=y_train, eval_set=[(X_test, y_test)], max_epochs=500, patience=50)
 
     imp_w = clf_weighted.feature_importances_
-    print("\nFeature Importances (Weighted Score):")
-    for name, imp in zip(features_list, imp_w):
-        print(f"{name:>25}: {imp:.4f}")
 
-    # Visualise importances
-    fig_w = px.bar(x=features_list, y=imp_w, title="TabNet Feature Importances – Weighted Score")
-    fig_w.update_layout(yaxis_title="Importance", xaxis_title="Feature")
-    fig_w.show()
+    display_names = [f if f != "success_ratio" else "completion_percentage" for f in features_list]
 
-    # Train TabNet on Equal-weight Score
-    print("\nTabNet trained on Equal-weight Score")
+    importance_json = [
+        {"feature": name, "importance": float(score)}
+        for name, score in zip(display_names, imp_w)
+    ]
+
     tabnet_y_e = country_features["Score"].values.astype("float32").reshape(-1, 1)
     X_train_e, X_test_e, y_train_e, y_test_e = train_test_split(tabnet_X, tabnet_y_e, test_size=0.2, random_state=42)
     clf_equal = TabNetRegressor(seed=0, verbose=0)
     clf_equal.fit(X_train=X_train_e, y_train=y_train_e, eval_set=[(X_test_e, y_test_e)], max_epochs=500, patience=50)
 
-    imp_e = clf_equal.feature_importances_
-    print("\nFeature Importances (Equal-weight Score):")
-    for name, imp in zip(features_list, imp_e):
-        print(f"{name:>25}: {imp:.4f}")
-
-    fig_e = px.bar(x=features_list, y=imp_e, title="TabNet Feature Importances – Equal-weight Score")
-    fig_e.update_layout(yaxis_title="Importance", xaxis_title="Feature")
-    fig_e.show()
-
-    # Optional: TabNet embeddings for advanced analysis (clustering, projection)
     with torch.no_grad():
         clf_weighted.network.eval()
         embeddings = clf_weighted.network.embedder.forward(torch.from_numpy(tabnet_X)).detach().cpu().numpy()
 
-    # 2D projection using t-SNE with safe perplexity
     perplexity = min(5, len(embeddings) - 1)
     tsne = TSNE(n_components=2, perplexity=perplexity, random_state=42)
     coords = tsne.fit_transform(embeddings)
     country_features["x_tsne"] = coords[:, 0]
     country_features["y_tsne"] = coords[:, 1]
 
-    tsne_fig = px.scatter(country_features, x="x_tsne", y="y_tsne", color="Weighted_Score",
-                          title="TabNet Embeddings (t-SNE Projection)",
-                          hover_name="country", color_continuous_scale="Viridis")
-    tsne_fig.show()
-
-    # Export JSON
     quantiles = pd.qcut(country_features["Weighted_Score"], q=5, labels=False)
     color_map = px.colors.sequential.Viridis
     country_features["color"] = quantiles.map(lambda q: color_map[q])
 
-    bar_fig = px.bar(country_features.sort_values("Weighted_Score", ascending=False),
-                     x="country", y="Weighted_Score", color="Weighted_Score",
-                     color_continuous_scale="Viridis",
-                     title="EU country weighted performance score ranking")
-    bar_fig.update_layout(xaxis_title="Country", yaxis_title="Weighted Score (0–1)")
-    bar_fig.show()
-
-    return country_features.sort_values("Score", ascending=False)[["country", "Score", "color"]]
+    return country_features.sort_values("Score", ascending=False)[["country", "Score", "color"]], importance_json
 
 

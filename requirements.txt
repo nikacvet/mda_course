@@ -17,3 +17,9 @@ openpyxl
 pyarrow
 gcsfs
 kedro-viz
+python-dotenv
+dash
+matplotlib
+dash-bootstrap-components
+wordcloud
+dash_bootstrap_templates
