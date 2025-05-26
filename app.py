@@ -22,9 +22,24 @@ from kedro.io import DataCatalog
 # Load environment variables
 load_dotenv()
 
+# ---------- GLOBALS ----------
+country_name_map = {
+    "AT": "Austria", "BE": "Belgium", "BG": "Bulgaria", "CY": "Cyprus", "CZ": "Czech Republic",
+    "DE": "Germany", "DK": "Denmark", "EE": "Estonia", "EL": "Greece", "ES": "Spain",
+    "FI": "Finland", "FR": "France", "HR": "Croatia", "HU": "Hungary", "IE": "Ireland",
+    "IT": "Italy", "LT": "Lithuania", "LU": "Luxembourg", "LV": "Latvia", "MT": "Malta",
+    "NL": "Netherlands", "PL": "Poland", "PT": "Portugal", "RO": "Romania", "SE": "Sweden",
+    "SI": "Slovenia", "SK": "Slovakia"
+}
+
+shocks = {
+    2030: "Global recession",
+    2036: "Policy withdrawal",
+    2043: "Technological disruption"
+}
+
 # ---------- S3 JSON LOADERS ----------
 def parse_json_content(content):
-    """Try to parse content into a DataFrame or fallback to raw JSON"""
     try:
         parsed = json.loads(content)
         if isinstance(parsed, list):
@@ -68,10 +83,10 @@ def load_data():
     country_scores = read_json_from_s3('artefacts/country_scores.json')
     project_keyphrases = read_json_from_s3('artefacts/project_keyphrases.json')
     feature_importance = read_json_from_s3('artefacts/feature_importances.json')
-    what_if_results = read_json_from_s3('artefacts/what_if_results.json')
-    return country_scores, project_keyphrases, feature_importance, what_if_results
+    future_projections = read_json_from_s3('artefacts/country_projections.json')
+    return country_scores, project_keyphrases, feature_importance, future_projections
 
-country_scores, project_keyphrases, feature_importance, what_if_results = load_data()
+country_scores, project_keyphrases, feature_importance, future_projections = load_data()
 
 # ---------- WORDCLOUD ----------
 def flatten_keyphrases_to_counts(nested_dict):
@@ -112,70 +127,150 @@ wordcloud_img = generate_wordcloud_base64(flatten_keyphrases_to_counts(project_k
 def create_feature_importance_chart():
     top_features = feature_importance.head(5).copy()
     other_importance = feature_importance.iloc[5:]['importance'].sum()
-    top_features = pd.concat(
-        [top_features, pd.DataFrame({'feature': ['Other'], 'importance': [other_importance]})],
-        ignore_index=True
-    )
+    top_features = pd.concat([
+        top_features,
+        pd.DataFrame({'feature': ['Other'], 'importance': [other_importance]})
+    ], ignore_index=True)
 
     fig = px.pie(top_features, values='importance', names='feature',
                  color_discrete_sequence=px.colors.qualitative.Pastel, hole=0.3)
-    fig.update_traces(textposition='inside', textinfo='percent+label', textfont_size=70)
+    fig.update_traces(textposition='inside', textinfo='percent+label', textfont_size=24)
     fig.update_layout(
-        legend=dict(
-            orientation="v", yanchor="middle", y=0.5,
-            xanchor="center", x=1.05, font=dict(size=45)
-        ),
-        margin=dict(l=20, r=150, t=40, b=20),
-        height=400,
-        font=dict(size=14),
-        hoverlabel=dict(font_size=30)
+        showlegend=False,
+        #legend=dict(orientation="v", yanchor="middle", y=0.5, xanchor="left", x=1.02, font=dict(size=16)),
+        margin=dict(l=20, r=100, t=30, b=10),
+        height=380,
+        font=dict(size=16),
+        hoverlabel=dict(font_size=20)
     )
     return fig
 
 def create_country_contributions_chart(country_scores):
+    country_scores = pd.DataFrame(country_scores)
     top_countries = country_scores.sort_values('Weighted_Score', ascending=False).head(20)
+
+    # Add full country names using the dictionary
+    top_countries['full_name'] = top_countries['country'].map(country_name_map).fillna(top_countries['country'])
+
     fig = go.Figure()
     fig.add_trace(go.Bar(
         x=top_countries['country'],
         y=top_countries['Weighted_Score'],
         name='Weighted Score',
         marker=dict(color=top_countries['color']),
-        hovertemplate="<b>%{x}</b><br>Score: %{y:.2f}<extra></extra>"
+        hovertemplate=(
+            "<b>%{customdata[0]}</b><br>" +
+            "Normalized score: %{y:.2f}<br>" +
+            "<i>This score has been normalized using GDP and project participation.</i><extra></extra>"
+        ),
+        customdata=top_countries[['full_name']]
     ))
+
     fig.update_layout(
-        font=dict(size=14),
-        xaxis=dict(title='Country', tickfont=dict(size=30)),
-        yaxis=dict(title='Weighted Score', tickfont=dict(size=30)),
-        legend=dict(font=dict(size=20)),
-        margin=dict(l=20, r=20, t=40, b=100),
-        height=500,
-        hoverlabel=dict(font_size=30)
+        font=dict(size=16),
+        xaxis=dict(title='Country', tickfont=dict(size=16)),
+        yaxis=dict(title='Weighted Score', tickfont=dict(size=16)),
+        margin=dict(l=20, r=20, t=30, b=50),
+        height=380,
+        hoverlabel=dict(font_size=16)
     )
     return fig
 
-def create_performance_comparison_chart():
-    if not what_if_results:
+
+# def create_performance_comparison_chart(country_code="MT", what_if_data=None):
+#     if not what_if_data or country_code not in what_if_data:
+#         countries = ['Country A', 'Country B', 'Country C', 'Country D']
+#         current = [80, 75, 85, 70]
+#         potential = [95, 90, 100, 85]
+#         fig = go.Figure()
+#         fig.add_trace(go.Scatter(x=countries, y=current, mode='lines', name='Current Performance',
+#                                  line=dict(color='teal', width=3)))
+#         fig.add_trace(go.Scatter(x=countries, y=potential, mode='lines', name='Potential with New Metrics',
+#                                  line=dict(color='orange', width=3)))
+#         fig.update_layout(
+#             yaxis_title='Performance Score',
+#             legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5),
+#             margin=dict(l=20, r=20, t=30, b=10),
+#             height=380,
+#             font=dict(size=16)
+#         )
+#         return fig
+
+#     country_data = what_if_data[country_code]
+#     years = country_data["years"]
+#     current_scores = country_data["score_current"]
+#     improved_scores = country_data["score_improved"]
+
+#     fig = go.Figure()
+#     fig.add_trace(go.Scatter(x=years, y=current_scores, mode='lines+markers',
+#                              name='Current Performance', line=dict(color='teal', width=3)))
+#     fig.add_trace(go.Scatter(x=years, y=improved_scores, mode='lines+markers',
+#                              name='Potential with New Metrics', line=dict(color='orange', width=3)))
+#     fig.update_layout(
+#         xaxis_title="Year",
+#         yaxis_title="Performance Score",
+#         legend=dict(orientation="h", yanchor="bottom", y=-0.3, xanchor="center", x=0.5),
+#         margin=dict(l=20, r=20, t=30, b=10),
+#         height=380,
+#         font=dict(size=14)
+#     )
+#     return fig
+
+def create_performance_comparison_chart(country_code="MT", what_if_data=None):
+
+    if not what_if_data or country_code not in what_if_data:
         countries = ['Country A', 'Country B', 'Country C', 'Country D']
         current = [80, 75, 85, 70]
         potential = [95, 90, 100, 85]
         fig = go.Figure()
-        fig.add_trace(go.Scatter(x=list(range(len(countries))), y=current, mode='lines',
-                                 name='Current Performance', line=dict(color='teal', width=3)))
-        fig.add_trace(go.Scatter(x=list(range(len(countries))), y=potential, mode='lines',
-                                 name='Potential with New Metrics', line=dict(color='orange', width=3)))
+        fig.add_trace(go.Scatter(x=countries, y=current, mode='lines', name='Current Performance',
+                                 line=dict(color='teal', width=3)))
+        fig.add_trace(go.Scatter(x=countries, y=potential, mode='lines', name='Potential with New Metrics',
+                                 line=dict(color='orange', width=3)))
         fig.update_layout(
-            title='Performance Comparison: Current vs. Potential with New Metrics',
-            xaxis=dict(tickmode='array', tickvals=list(range(len(countries))), ticktext=countries),
             yaxis_title='Performance Score',
             legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5),
-            margin=dict(l=20, r=20, t=40, b=20),
-            height=400
+            margin=dict(l=20, r=20, t=30, b=10),
+            height=380,
+            font=dict(size=16)
         )
-    else:
-        fig = go.Figure()  # Placeholder
+        return fig
+
+    country_data = what_if_data[country_code]
+    years = country_data["years"]
+    current_scores = country_data["score_current"]
+    improved_scores = country_data["score_improved"]
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=years, y=current_scores, mode='lines+markers',
+                             name='Current Performance', line=dict(color='teal', width=3)))
+    fig.add_trace(go.Scatter(x=years, y=improved_scores, mode='lines+markers',
+                             name='Potential with New Metrics', line=dict(color='orange', width=3)))
+
+    # Add built-in shocks
+    for yr, label in shocks.items():
+        if years[0] <= yr <= years[-1]:
+            fig.add_vline(x=yr, line_dash="dot", line_color="gray", opacity=0.6)
+            fig.add_annotation(
+                x=yr,
+                y=max(max(current_scores), max(improved_scores)),
+                text=label,
+                showarrow=False,
+                yshift=10,
+                font=dict(size=16, color="grey")
+            )
+
+    fig.update_layout(
+        xaxis_title="Year",
+        yaxis_title="Performance Score",
+        legend=dict(orientation="h", yanchor="top", y=-0.3, xanchor="center", x=0.5),
+        margin=dict(l=20, r=20, t=30, b=10),
+        font=dict(size=16)
+    )
+
     return fig
 
-# ---------- DASH SETUP ----------
+# ---------- DASH APP ----------
 app = dash.Dash(__name__, external_stylesheets=[
     dbc.themes.DARKLY,
     "https://fonts.googleapis.com/css2?family=DynaPuff&display=swap"
@@ -183,91 +278,189 @@ app = dash.Dash(__name__, external_stylesheets=[
 server = app.server
 load_figure_template('darkly')
 
-# ---------- DASH LAYOUT ----------
 app.layout = html.Div([
     html.H1("Impact on EU Climate Neutrality Goal", style={
-        'color': 'limegreen', 'textAlign': 'center',
-        'marginTop': '5px', 'marginBottom': '10px',
-        'fontFamily': 'DynaPuff, cursive', 'letterSpacing': '1px'
+        'color': '#51A356', 'textAlign': 'center',
+        'margin': '0.5vh 0',
+        'fontFamily': 'DynaPuff, cursive',
+        'letterSpacing': '1px',
+        'fontSize': '4vh'
     }),
 
     dcc.Tabs([
         dcc.Tab(label="Overview", children=[
-            dbc.Container([
+            html.Div([
                 dbc.Row([
                     dbc.Col([
                         html.Div([
-                            html.H4("Countries by contribution", className="text-center", style={'fontFamily': 'DynaPuff, cursive'}),
-                            dcc.Graph(figure=create_country_contributions_chart(country_scores), config={"displayModeBar": False}, style={"height": "40vh"})
-                        ], className="bg-dark text-light shadow p-3 rounded-4", style={"backgroundColor": "#2a2a2a"})
-                    ], width=12)
-                ], className="mb-3"),
+                            html.H4("Countries by contribution", className="text-center", style={
+                                'fontFamily': 'DynaPuff, cursive',
+                                'fontSize': '2.5vh','marginBottom': '0.2vh'
+                            }),
+                            dcc.Graph(
+                                figure=create_country_contributions_chart(country_scores),
+                                config={"displayModeBar": False},
+                                style={"height": "35vh"}
+                            )
+                        ], className="bg-dark text-light shadow p-3 rounded-4")
+                    ], className="mb-3")
+                ]),
 
                 dbc.Row([
                     dbc.Col([
                         html.Div([
-                            html.H4("Most frequent focus areas:", className="text-center", style={'fontFamily': 'DynaPuff, cursive'}),
-                            html.Img(src=wordcloud_img, style={'width': '100%', 'maxHeight': '35vh', 'objectFit': 'contain'})
-                        ], className="bg-dark text-light shadow p-3 rounded-4 h-100", style={"backgroundColor": "#2a2a2a", "height": "100%"})
+                            html.H4("Most frequent focus areas:", className="text-center", style={
+                                'fontFamily': 'DynaPuff, cursive',
+                                'fontSize': '2.5vh'
+                            }),
+                            html.Img(src=wordcloud_img, style={
+                                'width': '100%',
+                                'height': '30vh',
+                                'objectFit': 'cover'
+                            })
+                        ], className="bg-dark text-light shadow p-3 rounded-4 h-100")
                     ], width=6),
 
                     dbc.Col([
                         html.Div([
-                            html.H4("Most important features for success of a project", className="text-center", style={'fontFamily': 'DynaPuff, cursive'}),
-                            dcc.Graph(figure=create_feature_importance_chart(), config={"displayModeBar": False}, style={"height": "35vh"})
-                        ], className="bg-dark text-light shadow p-3 rounded-4 h-100", style={"backgroundColor": "#2a2a2a", "height": "100%"})
-                    ], width=6)
-                ], className="gy-2")
-            ], fluid=True, style={"height": "85vh"})
-        ],
-        style={'backgroundColor': '#2a2a2a', 'color': 'white', 'border': 'none',
-               'fontSize': '1.1rem', 'letterSpacing': '0.5px', 'fontFamily': 'DynaPuff, cursive'},
-        selected_style={'backgroundColor': '#2a2a2a', 'color': '#28a745', 'fontWeight': 'bold',
-                        'border': 'none', 'fontSize': '1.1rem', 'letterSpacing': '0.5px'}),
-
-        dcc.Tab(label="Contribution improvement report", children=[
-            dbc.Container([
-                dbc.Row([
-                    dbc.Col([
-                        html.Div([
-                            dcc.Graph(figure=create_performance_comparison_chart(), config={"displayModeBar": False}, style={"height": "40vh"})
-                        ], className="bg-dark text-light shadow p-3 rounded-4", style={"backgroundColor": "#2a2a2a"})
-                    ], width=6),
-
-                    dbc.Col([
-                        html.Div([
-                            html.P("Over the past three years, Country A and Country B have persistently underperformed...", style={'fontSize': '14px', 'fontFamily': 'DynaPuff, cursive'}),
-                            html.Br(),
-                            html.P("Our analysis shows that by improving their COS through more diverse partnerships...", style={'fontSize': '14px', 'fontFamily': 'DynaPuff, cursive'})
-                        ], className="bg-dark text-light shadow p-3 rounded-4", style={"backgroundColor": "#2a2a2a"})
+                            dbc.Row([
+                                dbc.Col([
+                                    html.H4("Most important features for success of a project", className="text-end", style={
+                                        'fontFamily': 'DynaPuff, cursive',
+                                        'fontSize': '2.5vh'
+                                    })
+                                ], width=5, className="d-flex align-items-center"),
+                                dbc.Col([
+                                    dcc.Graph(
+                                        figure=create_feature_importance_chart(),
+                                        config={"displayModeBar": False},
+                                        style={"height": "33vh"}
+                                    )
+                                ], width=7)
+                            ],align="center")
+                        ], className="bg-dark text-light shadow p-3 rounded-4 h-100")
                     ], width=6)
                 ])
-            ], fluid=True, style={"height": "85vh"})
+            ], style={"height": "85vh", "overflow": "hidden", "padding": "1vh"})
         ],
-        style={'backgroundColor': '#2a2a2a', 'color': 'white', 'border': 'none',
-               'fontSize': '1.1rem', 'letterSpacing': '0.5px', 'fontFamily': 'DynaPuff, cursive'},
-        selected_style={'backgroundColor': '#2a2a2a', 'color': '#28a745', 'fontWeight': 'bold',
-                        'border': 'none', 'fontSize': '1.1rem', 'letterSpacing': '0.5px'})
+        style={
+            'backgroundColor': '#2a2a2a',
+            'color': 'white',
+            'border': 'none',
+            'fontSize': '2.1vh',
+            'letterSpacing': '0.5px',
+            'fontFamily': 'DynaPuff, cursive',
+            'padding': '6px 12px'
+        },
+        selected_style={
+            'backgroundColor': '#2a2a2a',
+            'color': '#51A356',
+            'fontWeight': 'bold',
+            'border': 'none',
+            'fontSize': '2.1vh',
+            'letterSpacing': '0.5px',
+            'padding': '6px 12px'
+        }),
+
+        dcc.Tab(label="Contribution improvement report", children=[
+            html.Div([
+
+                # Unified Row 1
+                html.Div([
+                    dbc.Row([
+                        dbc.Col([
+                            dcc.Graph(
+                                figure=create_performance_comparison_chart("MT", future_projections),
+                                config={"displayModeBar": False},
+                                style={"height": "36vh"}
+                            )
+                        ], width=6),
+                        dbc.Col([
+                            html.Div([
+                                html.P(future_projections["MT"]["explanation"], style={
+                                    'fontSize': '2.5vh',
+                                    'fontFamily': 'DynaPuff, cursive',
+                                    'marginBottom': '1vh'
+                                })
+                            ], style={
+                                "display": "flex",
+                                "flexDirection": "column",
+                                "justifyContent": "center",
+                                "height": "100%"
+                            })
+                        ], width=6)
+                    ])
+                ], className="bg-dark text-light shadow p-3 rounded-4 mb-3"),
+
+                # Unified Row 2
+                html.Div([
+                    dbc.Row([
+                        dbc.Col([
+                            html.Div([
+                                html.P(future_projections["HR"]["explanation"], style={
+                                    'fontSize': '2.5vh',
+                                    'fontFamily': 'DynaPuff, cursive',
+                                    'marginBottom': '1vh'
+                                })
+                            ],  style={
+                                "display": "flex",
+                                "flexDirection": "column",
+                                "justifyContent": "center",
+                                "height": "100%"
+                            })
+                        ], width=6),
+                        dbc.Col([
+                            dcc.Graph(
+                                figure=create_performance_comparison_chart("HR", future_projections),
+                                config={"displayModeBar": False},
+                                style={"height": "36vh"}
+                            )
+                        ], width=6)
+                    ])
+                ], className="bg-dark text-light shadow p-3 rounded-4")
+
+            ], style={"padding": "1vh"})
+        ],
+        style={
+            'backgroundColor': '#2a2a2a',
+            'color': 'white',
+            'border': 'none',
+            'fontSize': '2.1vh',
+            'letterSpacing': '0.5px',
+            'fontFamily': 'DynaPuff, cursive',
+            'padding': '6px 12px'
+        },
+        selected_style={
+            'backgroundColor': '#2a2a2a',
+            'color': '#51A356',
+            'fontWeight': 'bold',
+            'border': 'none',
+            'fontSize': '2.1vh',
+            'letterSpacing': '0.5px',
+            'padding': '6px 12px'
+        })
+
+
     ],
     style={
         'backgroundColor': '#2a2a2a',
         'borderRadius': '10px',
-        'padding': '0.5rem',
+        'padding': '0.2vh',
         'color': 'white',
         'border': 'none',
-        'marginBottom': '10px',
+        'marginBottom': '0px',
         'fontFamily': 'DynaPuff, cursive'
     }),
+
 ], style={
     "backgroundColor": "#121212",
-    "padding": "1rem",
-    "height": "100vh",
-    "overflow": "hidden",
-    "display": "flex",
-    "flexDirection": "column"
+    "padding": "1vh",
+    "minHeight": "100vh",
+    "width": "100%",
+    "overflow": "hidden"
 })
+
 
 # ---------- RUN ----------
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 8050)))
-

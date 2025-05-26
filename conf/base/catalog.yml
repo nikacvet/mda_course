@@ -4,39 +4,18 @@
 # Link: https://docs.kedro.org/en/stable/data/data_catalog.html
 
 # Input datasets
-
-# Raw datasets
 project_raw:
   type: pandas.ExcelDataset
-  filepath: data/01_raw/project.xlsx
-  load_args:
-    sheet_name: DATA
+  filepath: s3://climate-upload/incoming/project.xlsx
+
 
 organization_raw:
   type: pandas.ExcelDataset
-  filepath: data/01_raw/organization.xlsx
+  filepath: s3://climate-upload/incoming/organization.xlsx
 
 gdp_csv:
   type: pandas.CSVDataset
-  filepath: data/01_raw/GDP_data.csv
-
-# project_raw:
-#   type: pandas.ExcelDataset
-#   filepath: gcs://mda_bucket_25/data/01_raw/project.xlsx
-#   credentials: gcs_creds
-
-
-# organization_raw:
-#   type: pandas.ExcelDataset
-#   filepath: gcs://mda_bucket_25/data/01_raw/organization.xlsx
-#   credentials: gcs_creds
-
-
-# gdp_csv:
-#   type: pandas.CSVDataset
-#   filepath: gcs://mda_bucket_25/data/01_raw/GDP_data.csv
-#   credentials: gcs_creds
-
+  filepath: s3://climate-upload/incoming/GDP_data.csv
 
 
 # Final initial dataset
@@ -66,25 +45,28 @@ country_features:
   type: pandas.ParquetDataset
   filepath: data/03_primary/country_features.parquet
 
-country_features_scored:
+country_features_weighted:
   type: pandas.ParquetDataset
-  filepath: data/03_primary/country_features_scored.parquet
+  filepath: data/03_primary/country_features_weighted.parquet
+
 
 # Output datasets for dashboard
-country_scores_json:
-  type: pandas.JSONDataset
-  filepath: results/country_scores.json
-
 project_keyphrases:
   type: kedro_datasets.json.JSONDataset
   filepath: results/project_keyphrases.json
 
 # project_keyphrases:
 #   type: kedro_datasets.json.JSONDataset
-#   filepath: gcs://mda_bucket_25/results/project_keyphrases.json
-#   credentials: gcs_creds
+#   filepath: s3://climate-upload/artefacts/project_keyphrases.json
 
-# country_scores_json:
-#   type: pandas.JSONDataset
-#   filepath: gcs://mda_bucket_25/results/country_scores.json
-#   credentials: gcs_creds
+country_scores_json:
+  type: pandas.JSONDataset
+  filepath: s3://climate-upload/artefacts/country_scores.json
+
+feature_importance:
+  type: kedro_datasets.json.JSONDataset
+  filepath: s3://climate-upload/artefacts/feature_importances.json
+
+country_projections:
+  type: kedro_datasets.json.JSONDataset
+  filepath: s3://climate-upload/artefacts/country_projections.json
