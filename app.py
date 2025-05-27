@@ -162,7 +162,7 @@ def create_country_contributions_chart(country_scores):
     fig.update_layout(
         font=dict(size=16),
         xaxis=dict(title='Country', tickfont=dict(size=16)),
-        yaxis=dict(title='Weighted Score', tickfont=dict(size=16)),
+        yaxis=dict(title='Score', tickfont=dict(size=16)),
         margin=dict(l=20, r=20, t=5, b=20),
         hoverlabel=dict(font_size=16)
     )
