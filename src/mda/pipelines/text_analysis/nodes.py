@@ -45,7 +45,6 @@ import pandas as pd
 #     print("Exported BERT-based word cloud topic data to objective_topics_wordcloud.json")
 
 
-
 def extract_keyphrases(projects_preprocessed: pd.DataFrame) -> dict:
     unique_df = (
         projects_preprocessed.dropna(subset=["objective"])
@@ -53,8 +52,8 @@ def extract_keyphrases(projects_preprocessed: pd.DataFrame) -> dict:
         .sort_values("projectID")[["projectID", "objective"]]
         .astype(str)
     )
-    objectives = unique_df["objective"].tolist()[0:20] #! THIS NEEDS TO BE DELETED!!!
-    project_ids = unique_df["projectID"].tolist()[0:20]
+    objectives = unique_df["objective"].tolist()
+    project_ids = unique_df["projectID"].tolist()
     model = KeyBERT("all-MiniLM-L6-v2")
     climate_keywords = [
         "climate", "carbon", "emission", "neutral", "warming", "co2", "sustainab",

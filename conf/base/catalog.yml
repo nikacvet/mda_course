@@ -51,13 +51,13 @@ country_features_weighted:
 
 
 # Output datasets for dashboard
-project_keyphrases:
-  type: kedro_datasets.json.JSONDataset
-  filepath: results/project_keyphrases.json
-
 # project_keyphrases:
 #   type: kedro_datasets.json.JSONDataset
-#   filepath: s3://climate-upload/artefacts/project_keyphrases.json
+#   filepath: results/project_keyphrases.json
+
+project_keyphrases:
+  type: kedro_datasets.json.JSONDataset
+  filepath: s3://climate-upload/artefacts/project_keyphrases.json
 
 country_scores_json:
   type: pandas.JSONDataset
