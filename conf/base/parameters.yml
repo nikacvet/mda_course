@@ -3,6 +3,8 @@ projection_targets:
   HR: ES
 
 projection_shocks:
-  2030: Global recession
+  2030: Funding reduction
   2036: Policy withdrawal
   2043: Technological disruption
+
+  

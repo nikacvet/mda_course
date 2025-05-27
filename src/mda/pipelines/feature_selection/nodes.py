@@ -7,6 +7,8 @@ from pytorch_tabnet.tab_model import TabNetRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.manifold import TSNE
 import torch
+import matplotlib.cm as cm
+import matplotlib.colors as mcolors
 
 
 
@@ -117,16 +119,16 @@ def compute_weighted_scores_and_tabnet_insights(country_features):
 
     display_names = [f if f != "success_ratio" else "completion_percentage" for f in features_list]
 
-    importance_json = [
-        {"feature": name, "importance": float(score)}
-        for name, score in zip(display_names, imp_w)
-    ]
-
     tabnet_y_e = country_features["Score"].values.astype("float32").reshape(-1, 1)
     X_train_e, X_test_e, y_train_e, y_test_e = train_test_split(tabnet_X, tabnet_y_e, test_size=0.2, random_state=42)
     clf_equal = TabNetRegressor(seed=0, verbose=0)
     clf_equal.fit(X_train=X_train_e, y_train=y_train_e, eval_set=[(X_test_e, y_test_e)], max_epochs=500, patience=50)
-
+    imp_e = clf_equal.feature_importances_
+    
+    importance_json = [
+        {"feature": name, "importance": float(score)}
+        for name, score in zip(features_list, imp_e)
+    ]
     with torch.no_grad():
         clf_weighted.network.eval()
         embeddings = clf_weighted.network.embedder.forward(torch.from_numpy(tabnet_X)).detach().cpu().numpy()
@@ -140,7 +142,36 @@ def compute_weighted_scores_and_tabnet_insights(country_features):
     quantiles = pd.qcut(country_features["Weighted_Score"], q=5, labels=False)
     color_map = px.colors.sequential.Viridis
     country_features["color"] = quantiles.map(lambda q: color_map[q])
-    country_features_weighted = country_features
-    return country_features_weighted, country_features.sort_values("Weighted_Score", ascending=False)[["country", "Weighted_Score", "color"]], importance_json
+    
+    avg_score = country_features["Weighted_Score"].mean()
+    avg_color = "#c48249"  # Highlight color for EU average
+
+    # Append EU Average
+    avg_row = pd.DataFrame([{
+        "country": "EU Average",
+        "Weighted_Score": avg_score
+    }])
+    df_extended = pd.concat([country_features, avg_row], ignore_index=True)
+
+    # Normalize the Weighted_Score for a blue colormap
+    norm = mcolors.Normalize(vmin=country_features["Weighted_Score"].min(), vmax=country_features["Weighted_Score"].max())
+    blues = cm.get_cmap("Blues")
+
+    bar_colors = []
+    for _, row in df_extended.iterrows():
+        if row["country"] == "EU Average":
+            bar_colors.append(avg_color)
+        else:
+            rgba = blues(norm(row["Weighted_Score"]))
+            hex_color = mcolors.to_hex(rgba)
+            bar_colors.append(hex_color)
+
+    # Sort for display
+    df_extended["color"] = bar_colors
+    df_extended = df_extended.sort_values("Weighted_Score", ascending=False)
+
+
+    country_features_weighted = df_extended
+    return country_features_weighted, df_extended.sort_values("Weighted_Score", ascending=False)[["country", "Weighted_Score", "color"]], importance_json
 
 

@@ -33,7 +33,7 @@ country_name_map = {
 }
 
 shocks = {
-    2030: "Global recession",
+    2030: "Funding reduction",
     2036: "Policy withdrawal",
     2043: "Technological disruption"
 }
@@ -125,14 +125,7 @@ wordcloud_img = generate_wordcloud_base64(flatten_keyphrases_to_counts(project_k
 
 # ---------- CHARTS ----------
 def create_feature_importance_chart():
-    top_features = feature_importance.head(5).copy()
-    other_importance = feature_importance.iloc[5:]['importance'].sum()
-    top_features = pd.concat([
-        top_features,
-        pd.DataFrame({'feature': ['Other'], 'importance': [other_importance]})
-    ], ignore_index=True)
-
-    fig = px.pie(top_features, values='importance', names='feature',
+    fig = px.pie(feature_importance, values='importance', names='feature',
                  color_discrete_sequence=px.colors.qualitative.Pastel, hole=0.3)
     fig.update_traces(textposition='inside', textinfo='percent+label', textfont_size=24)
     fig.update_layout(
@@ -147,7 +140,7 @@ def create_feature_importance_chart():
 
 def create_country_contributions_chart(country_scores):
     country_scores = pd.DataFrame(country_scores)
-    top_countries = country_scores.sort_values('Weighted_Score', ascending=False).head(20)
+    top_countries = country_scores.sort_values('Weighted_Score', ascending=False)
 
     # Add full country names using the dictionary
     top_countries['full_name'] = top_countries['country'].map(country_name_map).fillna(top_countries['country'])
@@ -170,71 +163,12 @@ def create_country_contributions_chart(country_scores):
         font=dict(size=16),
         xaxis=dict(title='Country', tickfont=dict(size=16)),
         yaxis=dict(title='Weighted Score', tickfont=dict(size=16)),
-        margin=dict(l=20, r=20, t=30, b=50),
-        height=380,
+        margin=dict(l=20, r=20, t=5, b=20),
         hoverlabel=dict(font_size=16)
     )
     return fig
 
-
-# def create_performance_comparison_chart(country_code="MT", what_if_data=None):
-#     if not what_if_data or country_code not in what_if_data:
-#         countries = ['Country A', 'Country B', 'Country C', 'Country D']
-#         current = [80, 75, 85, 70]
-#         potential = [95, 90, 100, 85]
-#         fig = go.Figure()
-#         fig.add_trace(go.Scatter(x=countries, y=current, mode='lines', name='Current Performance',
-#                                  line=dict(color='teal', width=3)))
-#         fig.add_trace(go.Scatter(x=countries, y=potential, mode='lines', name='Potential with New Metrics',
-#                                  line=dict(color='orange', width=3)))
-#         fig.update_layout(
-#             yaxis_title='Performance Score',
-#             legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5),
-#             margin=dict(l=20, r=20, t=30, b=10),
-#             height=380,
-#             font=dict(size=16)
-#         )
-#         return fig
-
-#     country_data = what_if_data[country_code]
-#     years = country_data["years"]
-#     current_scores = country_data["score_current"]
-#     improved_scores = country_data["score_improved"]
-
-#     fig = go.Figure()
-#     fig.add_trace(go.Scatter(x=years, y=current_scores, mode='lines+markers',
-#                              name='Current Performance', line=dict(color='teal', width=3)))
-#     fig.add_trace(go.Scatter(x=years, y=improved_scores, mode='lines+markers',
-#                              name='Potential with New Metrics', line=dict(color='orange', width=3)))
-#     fig.update_layout(
-#         xaxis_title="Year",
-#         yaxis_title="Performance Score",
-#         legend=dict(orientation="h", yanchor="bottom", y=-0.3, xanchor="center", x=0.5),
-#         margin=dict(l=20, r=20, t=30, b=10),
-#         height=380,
-#         font=dict(size=14)
-#     )
-#     return fig
-
 def create_performance_comparison_chart(country_code="MT", what_if_data=None):
-
-    if not what_if_data or country_code not in what_if_data:
-        countries = ['Country A', 'Country B', 'Country C', 'Country D']
-        current = [80, 75, 85, 70]
-        potential = [95, 90, 100, 85]
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(x=countries, y=current, mode='lines', name='Current Performance',
-                                 line=dict(color='teal', width=3)))
-        fig.add_trace(go.Scatter(x=countries, y=potential, mode='lines', name='Potential with New Metrics',
-                                 line=dict(color='orange', width=3)))
-        fig.update_layout(
-            yaxis_title='Performance Score',
-            legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5),
-            margin=dict(l=20, r=20, t=30, b=10),
-            height=380,
-            font=dict(size=16)
-        )
-        return fig
 
     country_data = what_if_data[country_code]
     years = country_data["years"]
@@ -247,7 +181,6 @@ def create_performance_comparison_chart(country_code="MT", what_if_data=None):
     fig.add_trace(go.Scatter(x=years, y=improved_scores, mode='lines+markers',
                              name='Potential with New Metrics', line=dict(color='orange', width=3)))
 
-    # Add built-in shocks
     for yr, label in shocks.items():
         if years[0] <= yr <= years[-1]:
             fig.add_vline(x=yr, line_dash="dot", line_color="gray", opacity=0.6)
@@ -264,7 +197,7 @@ def create_performance_comparison_chart(country_code="MT", what_if_data=None):
         xaxis_title="Year",
         yaxis_title="Performance Score",
         legend=dict(orientation="h", yanchor="top", y=-0.3, xanchor="center", x=0.5),
-        margin=dict(l=20, r=20, t=30, b=10),
+        margin=dict(l=20, r=20, t=30, b=0),
         font=dict(size=16)
     )
 
@@ -286,6 +219,21 @@ app.layout = html.Div([
         'letterSpacing': '1px',
         'fontSize': '4vh'
     }),
+    dbc.Modal(
+        [
+            dbc.ModalHeader(dbc.ModalTitle("Most frequent focus areas")),
+            dbc.ModalBody(html.Img(src=wordcloud_img, style={
+                'width': '100%',
+                'height': 'auto',
+                'objectFit': 'contain'
+            }))
+        ],
+        id="wordcloud-modal",
+        size="xl",
+        is_open=False,
+        centered=True,
+        backdrop=True
+    ),
 
     dcc.Tabs([
         dcc.Tab(label="Overview", children=[
@@ -313,7 +261,7 @@ app.layout = html.Div([
                                 'fontFamily': 'DynaPuff, cursive',
                                 'fontSize': '2.5vh'
                             }),
-                            html.Img(src=wordcloud_img, style={
+                            html.Img(src=wordcloud_img,id="wordcloud-thumbnail", style={
                                 'width': '100%',
                                 'height': '30vh',
                                 'objectFit': 'cover'
@@ -377,8 +325,8 @@ app.layout = html.Div([
                         ], width=6),
                         dbc.Col([
                             html.Div([
-                                html.P(future_projections["MT"]["explanation"], style={
-                                    'fontSize': '2.5vh',
+                                html.P(future_projections["MT"]["summary"], style={
+                                    'fontSize': '2.2vh',
                                     'fontFamily': 'DynaPuff, cursive',
                                     'marginBottom': '1vh'
                                 })
@@ -397,8 +345,8 @@ app.layout = html.Div([
                     dbc.Row([
                         dbc.Col([
                             html.Div([
-                                html.P(future_projections["HR"]["explanation"], style={
-                                    'fontSize': '2.5vh',
+                                html.P(future_projections["HR"]["summary"], style={
+                                    'fontSize': '2.2vh',
                                     'fontFamily': 'DynaPuff, cursive',
                                     'marginBottom': '1vh'
                                 })
@@ -459,7 +407,15 @@ app.layout = html.Div([
     "width": "100%",
     "overflow": "hidden"
 })
-
+@app.callback(
+    Output("wordcloud-modal", "is_open"),
+    Input("wordcloud-thumbnail", "n_clicks"),
+    State("wordcloud-modal", "is_open")
+)
+def toggle_modal(n_clicks, is_open):
+    if n_clicks:
+        return not is_open
+    return is_open
 
 # ---------- RUN ----------
 if __name__ == '__main__':
